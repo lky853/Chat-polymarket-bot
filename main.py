@@ -1,7 +1,7 @@
 import requests
 import time
 import os
-
+print("🔥 BOT STARTED")
 TELEGRAM_TOKEN = os.environ.get("8663329966:AAE5GeFrd1J5lvwqg8iHaVlaxRbsMn9NMck")
 CHAT_ID = os.environ.get("7803455800")
 
@@ -63,3 +63,8 @@ https://polymarket.com/event/{m['slug']}
 while True:
     check_arbitrage()
     time.sleep(60)
+import time
+
+while True:
+    print("running...")
+    time.sleep(10)
