@@ -1,35 +1,46 @@
 import requests
 import time
 import os
+
 print("🔥 BOT STARTED")
+
+# ✅ 從 Railway 環境變數讀取
 TELEGRAM_TOKEN = os.environ.get("8663329966:AAE5GeFrd1J5lvwqg8iHaVlaxRbsMn9NMck")
 CHAT_ID = os.environ.get("7803455800")
 
-EDGE_THRESHOLD = 0.02
+EDGE_THRESHOLD = 0.02  # 2%
 
 def send_telegram(msg):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {
-        "chat_id": CHAT_ID,
-        "text": msg
-    }
-    requests.post(url, data=data)
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        data = {
+            "chat_id": CHAT_ID,
+            "text": msg
+        }
+        requests.post(url, data=data, timeout=10)
+    except Exception as e:
+        print("Telegram error:", e)
 
 def get_markets():
     all_markets = []
     page = 1
 
     while True:
-        url = f"https://gamma-api.polymarket.com/markets?page={page}"
-        res = requests.get(url)
-        data = res.json()
+        try:
+            url = f"https://gamma-api.polymarket.com/markets?page={page}"
+            res = requests.get(url, timeout=10)
+            data = res.json()
 
-        if not data:
+            if not data:
+                break
+
+            all_markets.extend(data)
+            page += 1
+            time.sleep(0.5)
+
+        except Exception as e:
+            print("Fetch error:", e)
             break
-
-        all_markets.extend(data)
-        page += 1
-        time.sleep(0.5)
 
     return all_markets
 
@@ -57,16 +68,19 @@ https://polymarket.com/event/{m['slug']}
 """
                 send_telegram(msg)
 
-        except:
+        except Exception:
             continue
 
-import time
 
-import time
+# ✅ 啟動通知（超重要測試）
+send_telegram("✅ Bot 已成功啟動")
 
-print("🔥 BOT STARTED")
-
+# ✅ 主循環
 while True:
-    check_arbitrage()
-    print("running...")
-    time.sleep(60)
+    try:
+        check_arbitrage()
+        print("running...")
+        time.sleep(60)  # 每60秒掃一次
+    except Exception as e:
+        print("Loop error:", e)
+        time.sleep(10)
