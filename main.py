@@ -5,7 +5,7 @@ import os
 print("🔥 BOT STARTED")
 
 # ✅ 從 Railway 環境變數讀取
-TELEGRAM_TOKEN = os.environ.get("8663329966:AAE5GeFrd1J5lvwqg8iHaVlaxRbsMn9NMck")
+TELEGRAM_TOKEN = os.environ.get("8674263944:AAGR0RuvKBI1eTyQwQwkAVtVD6Qs9IUfXV4")
 CHAT_ID = os.environ.get("7803455800")
 
 EDGE_THRESHOLD = 0.02  # 2%
