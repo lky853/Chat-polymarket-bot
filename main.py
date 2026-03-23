@@ -5,12 +5,12 @@ import os
 print("🔥 BOT STARTED")
 
 # ✅ 從 Railway 環境變數讀取
-TELEGRAM_TOKEN = os.environ.get("8674263944:AAGR0RuvKBI1eTyQwQwkAVtVD6Qs9IUfXV4")
-CHAT_ID = os.environ.get("7803455800")
+TELEGRAM_TOKEN = os.environ.get("8663329966:AAE5GeFrd1J5lvwqg8iHaVlaxRbsMn9NMck")
+CHAT_ID = os.environ.get("8663329966")
 
 EDGE_THRESHOLD = 0.02  # 2%
 
-def send_telegram(msg):
+def send_telegram(msg)
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         data = {
