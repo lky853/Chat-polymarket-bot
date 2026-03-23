@@ -60,11 +60,13 @@ https://polymarket.com/event/{m['slug']}
         except:
             continue
 
-while True:
-    check_arbitrage()
-    time.sleep(60)
 import time
 
+import time
+
+print("🔥 BOT STARTED")
+
 while True:
+    check_arbitrage()
     print("running...")
-    time.sleep(10)
+    time.sleep(60)
