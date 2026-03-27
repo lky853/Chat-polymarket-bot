@@ -1,86 +1,202 @@
-import requests
-import time
 import os
+import time
+import logging
+import requests
+from typing import List, Dict, Any
 
-print("🔥 BOT STARTED")
+# =========================
+# CONFIG
+# =========================
+POLYMARKET_API = "https://gamma-api.polymarket.com/markets"
+SCAN_INTERVAL = 60  # seconds
+MIN_VOLUME = 20000
+ARBITRAGE_THRESHOLD = 1.0
 
-# ✅ 從 Railway 環境變數讀取
-TELEGRAM_TOKEN = os.environ.get("8663329966:AAE5GeFrd1J5lvwqg8iHaVlaxRbsMn9NMck")
-CHAT_ID = os.environ.get("8663329966")
+TELEGRAM_TOKEN = os.getenv("8674263944:AAGR0RuvKBI1eTyQwQwkAVtVD6Qs9IUfXV4")
+TELEGRAM_CHAT_ID = os.getenv("7803455800")
 
-EDGE_THRESHOLD = 0.02  # 2%
+REQUEST_TIMEOUT = 10
+MAX_RETRIES = 5
+RETRY_DELAY = 2
 
-def send_telegram(msg)
+# =========================
+# LOGGING SETUP
+# =========================
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+
+logger = logging.getLogger(__name__)
+
+# =========================
+# TELEGRAM
+# =========================
+def send_telegram(message: str) -> None:
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        logger.error("Telegram config missing")
+        return
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            res = requests.post(url, json=payload, timeout=REQUEST_TIMEOUT)
+
+            if res.status_code == 200:
+                logger.info("Telegram sent successfully")
+                return
+            else:
+                logger.warning(f"Telegram failed (status {res.status_code}): {res.text}")
+
+        except Exception as e:
+            logger.error(f"Telegram error: {e}")
+
+        time.sleep(RETRY_DELAY * attempt)
+
+    logger.error("Telegram send FAILED after retries")
+
+
+# =========================
+# FETCH MARKETS
+# =========================
+def fetch_markets() -> List[Dict[str, Any]]:
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        data = {
-            "chat_id": CHAT_ID,
-            "text": msg
-        }
-        requests.post(url, data=data, timeout=10)
-    except Exception as e:
-        print("Telegram error:", e)
+        response = requests.get(POLYMARKET_API, timeout=REQUEST_TIMEOUT)
 
-def get_markets():
-    all_markets = []
-    page = 1
+        if response.status_code != 200:
+            logger.error(f"API error: {response.status_code}")
+            return []
+
+        data = response.json()
+
+        if not isinstance(data, list):
+            logger.error("Unexpected API format")
+            return []
+
+        return data
+
+    except Exception as e:
+        logger.error(f"Fetch error: {e}")
+        return []
+
+
+# =========================
+# ARBITRAGE LOGIC
+# =========================
+def find_arbitrage(markets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    opportunities = []
+
+    for market in markets:
+        try:
+            if not market.get("active", False):
+                continue
+
+            volume = float(market.get("volume", 0))
+            if volume < MIN_VOLUME:
+                continue
+
+            outcomes = market.get("outcomes", [])
+            prices = market.get("outcomePrices", [])
+
+            if len(outcomes) != 2 or len(prices) != 2:
+                continue
+
+            yes_price = float(prices[0])
+            no_price = float(prices[1])
+
+            total = yes_price + no_price
+
+            if total < ARBITRAGE_THRESHOLD:
+                profit = round((1 - total) * 100, 2)
+
+                opportunities.append({
+                    "question": market.get("question", "N/A"),
+                    "yes": yes_price,
+                    "no": no_price,
+                    "total": total,
+                    "profit": profit,
+                    "volume": volume,
+                    "url": f"https://polymarket.com/market/{market.get('slug', '')}"
+                })
+
+        except Exception as e:
+            logger.warning(f"Parse error: {e}")
+            continue
+
+    return opportunities
+
+
+# =========================
+# FORMAT MESSAGE
+# =========================
+def format_message(opps: List[Dict[str, Any]]) -> str:
+    lines = ["🚨 <b>Arbitrage Opportunity Found</b>\n"]
+
+    for opp in opps:
+        line = (
+            f"<b>{opp['question']}</b>\n"
+            f"YES: {opp['yes']:.3f} | NO: {opp['no']:.3f}\n"
+            f"SUM: {opp['total']:.3f}\n"
+            f"PROFIT: {opp['profit']}%\n"
+            f"VOL: {int(opp['volume'])}\n"
+            f"<a href='{opp['url']}'>View Market</a>\n"
+        )
+        lines.append(line)
+
+    return "\n".join(lines)
+
+
+# =========================
+# MAIN LOOP
+# =========================
+def main():
+    logger.info("🔥 Polymarket Arbitrage Bot Started")
+
+    seen = set()
 
     while True:
         try:
-            url = f"https://gamma-api.polymarket.com/markets?page={page}"
-            res = requests.get(url, timeout=10)
-            data = res.json()
+            logger.info("Scanning markets...")
 
-            if not data:
-                break
+            markets = fetch_markets()
 
-            all_markets.extend(data)
-            page += 1
-            time.sleep(0.5)
+            if not markets:
+                logger.warning("No markets fetched")
+                time.sleep(SCAN_INTERVAL)
+                continue
 
-        except Exception as e:
-            print("Fetch error:", e)
-            break
+            opps = find_arbitrage(markets)
 
-    return all_markets
+            logger.info(f"Found {len(opps)} opportunities")
 
-def check_arbitrage():
-    markets = get_markets()
+            new_opps = []
+            for opp in opps:
+                key = opp["url"]
 
-    for m in markets:
-        try:
-            yes_price = float(m["outcomes"][0]["price"])
-            no_price = float(m["outcomes"][1]["price"])
-            volume = float(m.get("volume", 0))
+                if key not in seen:
+                    seen.add(key)
+                    new_opps.append(opp)
 
-            edge = 1 - (yes_price + no_price)
-
-            if edge > EDGE_THRESHOLD and volume < 20000:
-                msg = f"""🚨 Arbitrage Alert
-
-{m['question']}
-
-YES: {yes_price}
-NO: {no_price}
-Edge: {round(edge*100,2)}%
-
-https://polymarket.com/event/{m['slug']}
-"""
+            if new_opps:
+                msg = format_message(new_opps)
                 send_telegram(msg)
 
-        except Exception:
-            continue
+            time.sleep(SCAN_INTERVAL)
+
+        except Exception as e:
+            logger.critical(f"MAIN LOOP CRASH: {e}", exc_info=True)
+            time.sleep(10)
 
 
-# ✅ 啟動通知（超重要測試）
-send_telegram("✅ Bot 已成功啟動")
-
-# ✅ 主循環
-while True:
-    try:
-        check_arbitrage()
-        print("running...")
-        time.sleep(60)  # 每60秒掃一次
-    except Exception as e:
-        print("Loop error:", e)
-        time.sleep(10)
+# =========================
+# ENTRY
+# =========================
+if __name__ == "__main__":
+    main()
