@@ -157,6 +157,7 @@ def format_message(opps: List[Dict[str, Any]]) -> str:
 # MAIN LOOP
 # =========================
 def main():
+    send_telegram("✅ Bot started successfully")
     logger.info("🔥 Polymarket Arbitrage Bot Started")
 
     seen = set()
