@@ -12,8 +12,8 @@ SCAN_INTERVAL = 60  # seconds
 MIN_VOLUME = 20000
 ARBITRAGE_THRESHOLD = 1.0
 
-TELEGRAM_TOKEN = os.getenv("8674263944:AAGR0RuvKBI1eTyQwQwkAVtVD6Qs9IUfXV4")
-TELEGRAM_CHAT_ID = os.getenv("7803455800")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 REQUEST_TIMEOUT = 10
 MAX_RETRIES = 5
@@ -157,7 +157,6 @@ def format_message(opps: List[Dict[str, Any]]) -> str:
 # MAIN LOOP
 # =========================
 def main():
-    send_telegram("✅ Bot started successfully")
     logger.info("🔥 Polymarket Arbitrage Bot Started")
 
     seen = set()
